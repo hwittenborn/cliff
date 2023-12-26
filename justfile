@@ -16,6 +16,9 @@ install:
 clippy:
 	cargo clippy -- -D warnings
 
+fmt:
+    cargo +nightly fmt
+
 get-version:
     #!/usr/bin/env bash
     source makedeb/PKGBUILD

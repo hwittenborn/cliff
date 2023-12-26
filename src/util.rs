@@ -1,4 +1,6 @@
-use std::path::PathBuf;
+use relm4::once_cell::sync::Lazy;
+use std::{future::Future, path::PathBuf};
+use tokio::runtime::Runtime;
 
 /// CSS classes we use in the app.
 pub mod css {
@@ -6,6 +8,14 @@ pub mod css {
     pub static ERROR: &str = "error";
     /// Scrollable codeblocks.
     pub static SCROLLABLE_CODEBLOCK: &str = "celeste-scrollable-codeblock";
+    /// Centered body text for [`relm4_components::alert::Alert`].
+    pub static CENTERED_BODY: &str = "celeste-centered-body";
+    /// Hiding the title on `EntryRow` widgets.
+    pub static NO_TITLE: &str = "celeste-no-title";
+    /// Libadwaita's `.title-4`.
+    pub static TITLE_4: &str = "title-4";
+    /// Libadwaita's `.boxed-list`.
+    pub static BOXED_LIST: &str = "boxed-list";
 }
 
 /// The ID of the app.
