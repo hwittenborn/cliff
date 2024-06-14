@@ -4,19 +4,19 @@ mod login;
 mod migrations;
 mod parent;
 mod rclone;
+mod traits;
 mod util;
 
 // A rename that's a bit nicer to use.
 use adw::{gio, prelude::*};
 use backtrace::Backtrace;
 use clap::Parser;
-use futures::executor::BlockAwait;
 use if_chain::if_chain;
 use launch::LaunchModel;
 use migrations::{Migrator, MigratorTrait};
 use relm4::prelude::*;
 use relm4_components::alert::{Alert, AlertMsg, AlertSettings};
-pub use relm4_icons::icon_name as icons;
+pub use relm4_icons::icon_names as icons;
 use sea_orm::{Database, DatabaseConnection};
 use sentry::{integrations::panic::PanicIntegration, protocol::Event, ClientOptions, Hub, IntoDsn};
 use serde::{Deserialize, Serialize};
@@ -40,8 +40,10 @@ use tokio::{
 
 use crate::util::css::NO_TITLE;
 
-static SENTRY_DSN: &str =
-    "https://e2b3dfc44a5b51cf2a8802130b9d1073@o4505099657740288.ingest.sentry.io/4506271301500928";
+/// Build metadata.
+pub mod built {
+    include!(concat!(env!("OUT_DIR"), "/built.rs"));
+}
 
 /// Setup the system to be in a good state for execution.
 ///
@@ -103,14 +105,14 @@ async fn setup() -> Result<DatabaseConnection, (String, String)> {
 /// Create a new [`RelmApp`] instance.
 fn create_app<T: Debug>() -> RelmApp<T> {
     let app = RelmApp::new(util::APP_ID);
+    app.set_global_css(include_str!(concat!(env!("OUT_DIR"), "/style.css")));
     relm4_icons::initialize_icons();
-    relm4::set_global_css(include_str!(concat!(env!("OUT_DIR"), "/style.css")));
     app
 }
 
 /// The Sentry panic information passed between Celeste's parent process and GUI
 /// process.
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 struct SentryPanicInfo {
     /// The backtrace.
     backtrace: Backtrace,
@@ -171,12 +173,14 @@ fn main() {
     // the GUI.
     if let Some(path) = cli.panic_file {
         env::set_var("RUST_BACKTRACE", "1");
+        let hook = panic::take_hook();
         panic::set_hook(Box::new(move |panic_info| {
             let backtrace = Backtrace::new();
             let event = PanicIntegration::new().event_from_panic_info(panic_info);
             let json = serde_json::to_string(&SentryPanicInfo { event, backtrace }).unwrap();
 
             fs::write(&path, json).unwrap();
+            hook(panic_info);
         }));
         start();
     // Otherwise, start up the parent handler.

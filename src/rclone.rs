@@ -235,7 +235,9 @@ impl RcloneConfigItem {
                     "config_refresh_token": true
                 },
                 "opt": {
-                    "obscure": true
+                    "obscure": true,
+                    "nonInteractive": true,
+
                 }
             }),
             Self::GoogleDrive {

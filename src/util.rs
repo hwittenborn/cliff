@@ -1,4 +1,4 @@
-use relm4::once_cell::sync::Lazy;
+use relm4::{gtk::glib, once_cell::sync::Lazy};
 use std::{future::Future, path::PathBuf};
 use tokio::runtime::Runtime;
 
@@ -20,6 +20,20 @@ pub mod css {
 
 /// The ID of the app.
 pub static APP_ID: &str = "com.hunterwittenborn.Celeste";
+
+/// A boolean on if we're in debug mode.
+pub static APP_RELEASE_MODE: bool = cfg!(release_mode);
+
+/// The environment we're being packaged for.
+pub static APP_ENVIRONMENT: Option<&'static str> = option_env!("ENVIRONMENT");
+
+/// Show an error if in release mode and the user hasn't set an environment.
+#[cfg(missing_environment)]
+compile_error!("The environment variable `ENVIRONMENT` isn't set, but is required for release builds in order to identify the package source in error reports. Please set the variable to a lowercase, hyphen separated string (i.e. `mpr`, `kali-linux`)");
+
+/// Show an error if in release mode and the user set a bad environment name.
+#[cfg(bad_environment)]
+compile_error!("The environment variable `ENVIRONMENT` was set to an invalid value. Please set the variable to a lowercase, hyphen separated string (i.e. `mpr`, `kali-linux`)");
 
 /// Get the user's config directory.
 pub fn get_config_dir() -> PathBuf {

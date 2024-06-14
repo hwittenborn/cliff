@@ -5,7 +5,6 @@ use std::{
 };
 
 use adw::prelude::*;
-use futures::executor::BlockAwait;
 use relm4::{
     component::{
         AsyncComponent, AsyncComponentController, AsyncComponentParts, AsyncComponentSender,
@@ -75,7 +74,7 @@ impl SimpleAsyncComponent for LaunchModel {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
-        panic!("Sentry panic lets GOOOOOOOOO");
+        panic!("OH NO!");
         let login = LoginModel::builder()
             .transient_for(root.clone())
             .launch(())
@@ -83,6 +82,7 @@ impl SimpleAsyncComponent for LaunchModel {
                 LoginOutput::NewLogin(remote_name) => LaunchMsg::NewLogin(remote_name),
                 LoginOutput::LoginCancel => LaunchMsg::LoginCancel,
             });
+        login.emit(LoginMsg::Open);
         let model = Self {
             hide_on_close: false,
             visible: false,

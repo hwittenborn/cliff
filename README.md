@@ -10,9 +10,6 @@ Celeste is a GUI file synchronization client that can connect to virtually any c
 
 ![](/assets/main-window.png)
 
-> **NOTE:**
-> Celeste is currently alpha software, and you should likewise ensure you have a backup of your data before you decide on trying it. *Any file loss incurred is at your own risk*.
-
 ## Features
 - Two-way sync
 - Asking what to do when a local and remote file have both been updated since last sync
@@ -54,10 +51,15 @@ sudo apt install celeste
 ```
 
 ## Support
-For anything that isn't an issue in Celeste's functionality, visit the project's [Discord server](https://discord.gg/FtNhPepvj7), where you can obtain support and chat with fellow users. If you have a bug/feature request for Celeste, then make a new issue in the project's [issue tracker](https://github.com/hwittenborn/celeste/issues).
+Celeste has multiple communication rooms available if you need assistance, want to talk about the project, or to just hang around with some fellow users:
+- Discord: https://discord.gg/FtNhPepvj7
+- Matrix: https://matrix.to/#/#celeste:gnome.org
+
+You can also use the [issue tracker](https://github.com/hwittenborn/celeste/issues) for such if you'd prefer that.
 
 ## Contributing
 Instructions still largely need to be written up - if you'd like to help with that, feel free to submit a PR!
 
 ### Translating
 Celeste uses [Weblate](https://weblate.org) to manage translations. See <https://hosted.weblate.org/projects/celeste/celeste> if you'd like to assist in translating.
+

@@ -2,10 +2,10 @@
 use crate::{
     gtk_util,
     rclone::{self, RcloneConfigItem, WebDavVendors},
+    traits::*,
     util,
 };
 use adw::{prelude::*, Application, ApplicationWindow};
-use futures::executor::BlockAwait;
 use nix::{
     sys::signal::{self, Signal},
     unistd::Pid,
@@ -13,6 +13,7 @@ use nix::{
 use regex::Regex;
 use relm4::{
     component::{AsyncComponentParts, AsyncComponentSender, SimpleAsyncComponent},
+    gtk::{gdk, glib},
     once_cell::sync::Lazy,
     prelude::*,
 };
@@ -23,8 +24,9 @@ use serde_json::json;
 use std::{
     cell::RefCell,
     collections::HashMap,
-    io::{BufRead, BufReader},
+    io::{BufRead, BufReader, Write},
     net::SocketAddr,
+    path::PathBuf,
     process::{Child, Command, Stdio},
     rc::Rc,
     str::FromStr,
@@ -33,6 +35,7 @@ use std::{
     time::Duration,
 };
 use strum::{EnumIter, EnumString, IntoEnumIterator, IntoStaticStr};
+use tempfile::NamedTempFile;
 use tera::{Context, Tera};
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use url::Url;
@@ -40,6 +43,9 @@ use warp::{
     http::{header, Response},
     Filter,
 };
+
+/// The rclone template used after authentication is done.
+static RCLONE_TEMPLATE: &str = include_str!("html/auth-template.go.html");
 
 /// The Dropbox client ID/secret.
 static DROPBOX_CLIENT: (&str, &str) = ("hke0fgr43viaq03", "o4cpx8trcnneq7a");
@@ -50,56 +56,11 @@ static GOOGLE_DRIVE_CLIENT: (&str, &str) = (
     "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",
 );
 
+/// The Google SVG.
+static GOOGLE_SVG: &[u8] = include_bytes!("icons/google.svg");
+
 /// The pCloud client ID/secret.
 static PCLOUD_CLIENT: (&str, &str) = ("KRzpo46NKb7", "g10qvqgWR85lSvEQWlIqCmPYIhwX");
-
-static GOOGLE_DRIVE_AUTH_HTML: &str = include_str!("html/google-drive.tera.html");
-static GOOGLE_DRIVE_PNG: &[u8] = include_bytes!("images/google-drive.png");
-static GOOGLE_DRIVE_SIGNIN_PNG: &[u8] = include_bytes!("images/google-signin.png");
-
-fn show_error(model: &LoginModel, field: &LoginField) {
-    let mut borrow = model.errors.borrow_mut();
-    let items = borrow.get_mut(field).unwrap();
-
-    // TODO: We should use `Alert` from `relm4_components` for this, but their
-    // component currently isn't flexible enough for our needs.
-    gtk_util::show_error(&items.0, Some(&items.1));
-}
-
-/// Spawn the Google Drive authentication server.
-///
-/// Returns the server address, and a [`Sender`] that can be used to
-/// stop the server.
-async fn spawn_drive_auth_server(rclone_url: &str) -> (SocketAddr, Sender<()>) {
-    let rclone_url = rclone_url.to_string();
-    let root = warp::path::end().map(move || {
-        let mut context = Context::new();
-        context.insert("rclone_url", &rclone_url);
-        let html = Tera::one_off(GOOGLE_DRIVE_AUTH_HTML, &context, true).unwrap();
-        warp::reply::html(html)
-    });
-    let drive_png = warp::path!("google-drive.png").map(|| {
-        Response::builder()
-            .header(header::CONTENT_TYPE, "image/png")
-            .body(GOOGLE_DRIVE_PNG)
-    });
-    let drive_signin_png = warp::path!("google-signin.png").map(|| {
-        Response::builder()
-            .header(header::CONTENT_TYPE, "image/png")
-            .body(GOOGLE_DRIVE_SIGNIN_PNG)
-    });
-
-    let routes = warp::get().and(root.or(drive_png).or(drive_signin_png));
-
-    let (tx, mut rx) = mpsc::channel(1);
-    let (addr, server) = warp::serve(routes)
-        .bind_with_graceful_shutdown(SocketAddr::from_str("127.0.0.1:0").unwrap(), async move {
-            rx.recv().await.unwrap()
-        });
-    tokio::spawn(server);
-
-    (addr, tx)
-}
 
 /// Get an authentication token for the given provider. Returns [`Err`] if
 /// unable to.
@@ -109,6 +70,10 @@ async fn get_token(
     provider: Provider,
     mut rx: mpsc::Receiver<()>,
 ) -> Result<String, LoginCommandErr> {
+    // Set up the rclone template file for usage later.
+    let mut template_file = NamedTempFile::new().unwrap();
+    template_file.write(RCLONE_TEMPLATE.as_bytes()).unwrap();
+
     let (client_id, client_secret) = match provider {
         Provider::Dropbox => DROPBOX_CLIENT,
         Provider::GoogleDrive => GOOGLE_DRIVE_CLIENT,
@@ -122,6 +87,8 @@ async fn get_token(
         client_id,
         client_secret,
         "--auth-no-open-browser",
+        "--template",
+        &template_file.path().display().to_string(),
     ];
 
     // Spawn the authentication process, and continuously read it's stdout and stdin
@@ -181,15 +148,7 @@ async fn get_token(
     .map_err(|err| LoginCommandErr::AuthServer(err))?;
 
     // Present the authentication request to the user.
-    //
-    // Google Drive has requirements for our app to show a Google Drive logo, so
-    // handle that here.
-    let (addr, maybe_killer) = if provider == Provider::GoogleDrive {
-        let (addr, killer) = spawn_drive_auth_server(&rclone_url).await;
-        (format!("http://{addr}"), Some(killer))
-    } else {
-        (rclone_url.to_string(), None)
-    };
+    let addr = rclone_url.to_string();
     open::that(&addr).unwrap();
 
     // Get the token, returning an error if we couldn't get it.
@@ -223,11 +182,6 @@ async fn get_token(
     .await
     .unwrap();
 
-    // Kill the webserver if we had started it up.
-    if let Some(killer) = maybe_killer {
-        killer.send(()).await.unwrap();
-    }
-
     Ok(token?)
 }
 
@@ -236,7 +190,7 @@ impl WidgetTemplate for WarningButton {
     view! {
         gtk::Button {
             add_css_class: "flat",
-            set_icon_name: relm4_icons::icon_name::WARNING,
+            set_icon_name: relm4_icons::icon_names::WARNING,
             set_valign: gtk::Align::Center
         }
     }
@@ -288,6 +242,12 @@ pub enum LoginMsg {
     /// Show an error from clicking the warning button on a login field.
     #[doc(hidden)]
     ShowFieldError(LoginField),
+    /// Prepare for authentication, by showing a confirm authentication window
+    /// as needed.
+    ///
+    /// This is done to conform to some service's auth requirements.
+    #[doc(hidden)]
+    PrepAuthenticate,
     /// Get a token for a service that needs it.
     #[doc(hidden)]
     Authenticate,
@@ -350,8 +310,12 @@ pub struct LoginModel {
     /// [`Self::auth`]. It gets set to [`Some`] at the start of an
     /// authentication request from [`LoginMsg::Authenticate`].
     auth_sender: Option<Sender<()>>,
-    /// The [`Alert`] component we use for showing errors from [`Self::errors`].
+    /// The [`Alert`] component we use for showing errors from
+    /// [`Self::errors`].
     alert: Controller<Alert>,
+    /// The [`Alert`] component we use before using [`Self::auth`]. Need to
+    /// satisfy auth requirements of some cloud providers.
+    prep_auth: Controller<Alert>,
     /// The [`Alert`] component we use to notify the user of web browser
     /// authentication.
     auth: Controller<Alert>,
@@ -607,8 +571,7 @@ impl AsyncComponent for LoginModel {
                         set_sensitive: false,
                         set_halign: gtk::Align::End,
                         set_hexpand: true,
-
-                        connect_clicked => LoginMsg::Authenticate
+                        connect_clicked => LoginMsg::PrepAuthenticate,
                     }
                 }
              }
@@ -620,6 +583,29 @@ impl AsyncComponent for LoginModel {
         root: Self::Root,
         sender: AsyncComponentSender<Self>,
     ) -> AsyncComponentParts<Self> {
+        // TODO: Use this to show Google Auth button.
+        relm4::view! {
+            #[name(prep_auth_button)]
+            gtk::Button {
+                set_halign: gtk::Align::Center,
+                set_margin_top: 10,
+                connect_clicked => LoginMsg::Authenticate,
+
+                #[wrap(Some)]
+                set_child = &gtk::Box {
+                    set_spacing: 10,
+
+                    gtk::Image {
+                        set_from_paintable: Some(&gdk::Texture::from_bytes(&glib::Bytes::from_static(GOOGLE_SVG)).unwrap())
+                    },
+
+                    gtk::Label {
+                        set_label: &tr::tr!("Sign in with Google")
+                    }
+                }
+            }
+        }
+
         let alert = Alert::builder()
             .transient_for(root.clone())
             .launch(AlertSettings {
@@ -627,10 +613,19 @@ impl AsyncComponent for LoginModel {
                 ..Default::default()
             })
             .connect_receiver(|_, _| {});
+        let prep_auth = Alert::builder()
+            .transient_for(root.clone())
+            .launch(AlertSettings {
+                text: Some(tr::tr!("Authenticate to Google Drive")),
+                secondary_text: Some(tr::tr!("To confirm with Google that you want to connect to Google Drive, click the button below")),
+                extra_child: Some(prep_auth_button.into()),
+                ..Default::default()
+            })
+            .connect_receiver(|_, _| {});
         let auth = Alert::builder()
             .transient_for(root.clone())
             .launch(AlertSettings {
-                text: String::new(),
+                text: None,
                 secondary_text: Some(tr::tr!("Follow the link that opened in your browser, and come back once you've finished")),
                 cancel_label: Some(tr::tr!("Cancel")),
                 ..Default::default()
@@ -644,6 +639,7 @@ impl AsyncComponent for LoginModel {
             show_login_spinner: false,
             auth_sender: None,
             alert,
+            prep_auth,
             auth,
         };
         for field in LoginField::iter() {
@@ -720,9 +716,16 @@ impl AsyncComponent for LoginModel {
                 let mut alert_state = self.alert.state().get_mut();
                 let mut settings = &mut alert_state.model.settings;
 
-                settings.text = error_items.0.clone();
+                settings.text = Some(error_items.0.clone());
                 settings.secondary_text = Some(error_items.1.clone());
                 self.alert.emit(AlertMsg::Show);
+            }
+            LoginMsg::PrepAuthenticate => {
+                if self.provider == Provider::GoogleDrive {
+                    self.prep_auth.emit(AlertMsg::Show);
+                } else {
+                    sender.input(LoginMsg::Authenticate);
+                }
             }
             LoginMsg::Authenticate => {
                 root.set_sensitive(false);
@@ -736,7 +739,7 @@ impl AsyncComponent for LoginModel {
 
                 if needs_auth_window {
                     self.auth.state().get_mut().model.settings.text =
-                        tr::tr!("Logging into {}...", self.provider);
+                        Some(tr::tr!("Logging into {}...", self.provider));
                     self.auth.emit(AlertMsg::Show);
                 }
 
@@ -837,6 +840,7 @@ impl AsyncComponent for LoginModel {
                                 LoginCommandErr::NameResolution
                             } else if error.contains("The password is not correct")
                                 || error.contains("Incorrect login credentials")
+                                || error.contains("password was incorrect")
                             {
                                 LoginCommandErr::InvalidPassword
                             } else if error.contains("this account requires a 2FA code") {
@@ -869,6 +873,7 @@ impl AsyncComponent for LoginModel {
         sender: AsyncComponentSender<Self>,
         root: &Self::Root,
     ) {
+        self.prep_auth.emit(AlertMsg::Hide);
         self.auth.emit(AlertMsg::Hide);
         self.show_login_spinner = false;
 
@@ -903,21 +908,21 @@ impl AsyncComponent for LoginModel {
                 LoginCommandErr::NameResolution => {
                     let mut alert_state = self.alert.state().get_mut();
                     let mut settings = &mut alert_state.model.settings;
-                    settings.text = tr::tr!("Authentication error");
+                    settings.text = Some(tr::tr!("Authentication error"));
                     settings.secondary_text = Some(tr::tr!("Celeste was unable to connect to {}. Check your internet connection and try again.", server_name));
                     self.alert.emit(AlertMsg::Show);
                 },
                 LoginCommandErr::InvalidPassword => {
                     let mut alert_state = self.alert.state().get_mut();
                     let mut settings = &mut alert_state.model.settings;
-                    settings.text = tr::tr!("Authentication error");
+                    settings.text = Some(tr::tr!("Authentication error"));
                     settings.secondary_text = Some(tr::tr!("An invalid password was entered for the given username. Check your login credentials and try again."));
                     self.alert.emit(AlertMsg::Show);
                 }
                 LoginCommandErr::MissingTotp => {
                     let mut alert_state = self.alert.state().get_mut();
                     let mut settings = &mut alert_state.model.settings;
-                    settings.text = tr::tr!("Authentication error");
+                    settings.text = Some(tr::tr!("Authentication error"));
                     settings.secondary_text = Some(tr::tr!("A 2FA code is required to log in to this account. Provide one and try again."));
                     self.alert.emit(AlertMsg::Show)
                 },

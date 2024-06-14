@@ -1,0 +1,4 @@
+# Recommended: Specify your app ID *OR* your base resource path for more robust icon loading
+app_id = "com.hunterwittenborn.Celeste"
+icons = ["copy", "share", "warning"]
+icon_folder = "src/icons"
