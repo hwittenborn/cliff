@@ -2,7 +2,7 @@
 use super::ServerType;
 use crate::{
     gtk_util,
-    login::{dropbox, login_util, pcloud},
+    login::{dropbox, login_util, onedrive, pcloud},
     mpsc::Sender,
     traits::prelude::*,
     util,
@@ -33,6 +33,7 @@ static DEFAULT_CLIENT_SECRET: &str = "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";
 pub enum AuthType {
     Dropbox,
     GDrive,
+    OneDrive,
     PCloud,
 }
 
@@ -44,6 +45,7 @@ impl fmt::Display for AuthType {
             match self {
                 Self::Dropbox => "Dropbox",
                 Self::GDrive => "Google Drive",
+                Self::OneDrive => "OneDrive",
                 Self::PCloud => "pCloud",
             }
         )
@@ -133,6 +135,7 @@ impl GDriveConfig {
             args.push(match auth_type {
                 AuthType::GDrive => "drive",
                 AuthType::Dropbox => "dropbox",
+                AuthType::OneDrive => "onedrive",
                 AuthType::PCloud => "pcloud",
             });
             args.push(&client_id);
@@ -262,6 +265,12 @@ impl GDriveConfig {
                                 auth_json: auth_token
                             }),
                             AuthType::Dropbox => ServerType::Dropbox(dropbox::DropboxConfig {
+                                server_name: server_name.text().to_string(),
+                                client_id,
+                                client_secret,
+                                auth_json: auth_token
+                            }),
+                            AuthType::OneDrive => ServerType::OneDrive(onedrive::OneDriveConfig {
                                 server_name: server_name.text().to_string(),
                                 client_id,
                                 client_secret,

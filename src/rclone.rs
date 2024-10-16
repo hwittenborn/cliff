@@ -28,6 +28,11 @@ pub fn get_remote<T: ToString>(remote: T) -> Option<Remote> {
             client_id: config["client_id"].clone(),
             client_secret: config["client_secret"].clone(),
         })),
+        "onedrive" => Some(Remote::OneDrive(OneDriveRemote {
+            remote_name: remote,
+            client_id: config["client_id"].clone(),
+            client_secret: config["client_secret"].clone(),
+        })),
         "pcloud" => Some(Remote::PCloud(PCloudRemote {
             remote_name: remote,
             client_id: config["client_id"].clone(),
@@ -81,6 +86,7 @@ pub fn get_remotes() -> Vec<Remote> {
 pub enum Remote {
     Dropbox(DropboxRemote),
     GDrive(GDriveRemote),
+    OneDrive(OneDriveRemote),
     PCloud(PCloudRemote),
     ProtonDrive(ProtonDriveRemote),
     WebDav(WebDavRemote),
@@ -91,6 +97,7 @@ impl Remote {
         match self {
             Remote::Dropbox(remote) => remote.remote_name.clone(),
             Remote::GDrive(remote) => remote.remote_name.clone(),
+            Remote::OneDrive(remote) => remote.remote_name.clone(),
             Remote::PCloud(remote) => remote.remote_name.clone(),
             Remote::ProtonDrive(remote) => remote.remote_name.clone(),
             Remote::WebDav(remote) => remote.remote_name.clone(),
@@ -112,6 +119,17 @@ pub struct DropboxRemote {
 // The Google Drive remote type.
 #[derive(Clone, Debug)]
 pub struct GDriveRemote {
+    /// The name of the remote.
+    pub remote_name: String,
+    /// The client id.
+    pub client_id: String,
+    /// The client secret.
+    pub client_secret: String,
+}
+
+// The OneDrive remote type.
+#[derive(Clone, Debug)]
+pub struct OneDriveRemote {
     /// The name of the remote.
     pub remote_name: String,
     /// The client id.
