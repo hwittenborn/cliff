@@ -36,26 +36,57 @@ Celeste can currently connect to the following cloud providers:
 ## Installation
 Celeste can be installed via the methods listed below:
 
-### Flatpak
+### Official
+These installation methods are maintained directly by Celeste maintainers.
+
+#### Flatpak
 Celeste is available on [Flathub](https://flathub.org/apps/details/com.hunterwittenborn.Celeste). First make sure you have [set up Flatpak](https://flatpak.org/setup/) on your system, and then run the following:
 
 ```sh
 flatpak install flathub com.hunterwittenborn.Celeste
 ```
 
-### Snap
+#### Snap
 Celeste is available on the [Snap Store](https://snapcraft.io/celeste), which can be installed on any system that has Snap installed.
 
 ```sh
 snap install celeste
 ```
 
-### Prebuilt-MPR (Debian/Ubuntu)
+#### Prebuilt-MPR (Debian/Ubuntu)
 If you're on Ubuntu 22.10 or later, you can install Celeste from the Prebuilt-MPR. First make sure [the Prebuilt-MPR is set up](https://docs.makedeb.org/prebuilt-mpr/getting-started/) on your system, and then run the following:
 
 ```sh
 sudo apt install celeste
 ```
+
+### Community-Maintained
+These installation methods are maintained by members of the Celeste community. They should work just fine, but if for any reason they don't and an issue arrises, you may be asked to reach out to the package's maintainer.
+
+#### AUR (Arch Linux)
+> This package is maintained by [Mark Wagie](https://github.com/yochananmarqos).
+
+If you're on Arch Linux, you can install Celeste from the [AUR](https://aur.archlinux.org/packages/celeste).
+
+You can install it with your preferred [AUR helper](https://wiki.archlinux.org/title/AUR_helpers) such as [Yay](https://github.com/Jguer/yay) or [Paru](https://github.com/morganamilo/paru) (recommended):
+
+```sh
+# Yay
+yay -S celeste
+
+# Paru
+paru -S celeste
+```
+
+or you can install it manually with [makepkg](https://wiki.archlinux.org/title/makepkg):
+
+```sh
+git clone 'https://aur.archlinux.org/celeste'
+cd celeste/
+makepkg -si
+```
+
+Note that you'll have to manually update Celeste if you install with makepkg though.
 
 ## Support
 Celeste has multiple communication rooms available if you need assistance, want to talk about the project, or to just hang around with some fellow users:
