@@ -203,7 +203,15 @@ impl GDriveConfig {
                 .launch()
             );
             if let AuthType::GDrive = auth_type {
-                Command::new("xdg-open").arg("http://localhost:8000").spawn().unwrap().wait().unwrap().exit_ok().unwrap();
+                Command::new("xdg-open")
+                    .arg("http://localhost:8000")
+                    .spawn()
+                    .unwrap()
+                    .wait()
+                    .unwrap()
+                    .success()
+                    .then_some(())
+                    .unwrap()
             }
 
             // Wait for input from the user.
