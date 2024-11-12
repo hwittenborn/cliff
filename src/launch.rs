@@ -25,7 +25,9 @@ use adw::{
 };
 use file_lock::{FileLock, FileOptions};
 use indexmap::IndexMap;
-use sea_orm::{entity::prelude::*, ActiveValue, Database, DatabaseConnection};
+use sea_orm::{
+    entity::prelude::*, ActiveValue, Database, DatabaseConnection, IntoActiveModel, Set,
+};
 
 use std::{
     boxed,
@@ -1078,6 +1080,8 @@ pub fn launch(app: &Application, background: bool) {
         error_count
     });
 
+    let mut first_sync_of_launch = true;
+
     'main: loop {
         // Break the loop if the user requested to quit the application.
         if *(*CLOSE_REQUEST).lock().unwrap() {
@@ -1111,8 +1115,26 @@ pub fn launch(app: &Application, background: bool) {
         }
 
         util::run_in_background(|| thread::sleep(Duration::from_millis(500)));
+        let now = time::OffsetDateTime::now_utc();
+        for remote in remotes.into_iter() {
+            #[allow(clippy::nonminimal_bool)] //Easier to read nonsimplified
+            if !first_sync_of_launch
+                && !((time::OffsetDateTime::from_unix_timestamp(remote.last_sync_timestamp.into())
+                .expect("Very very bad timestamp?")
+                // TODO make configurable
+                + time::Duration::hours(4))
+                    < now)
+            {
+                continue;
+            }
 
-        for remote in remotes {
+            util::await_future(async {
+                let mut remote_am = remote.clone().into_active_model();
+                remote_am.last_sync_timestamp =
+                    Set(now.unix_timestamp().try_into().expect("2038 yet?"));
+                remote_am.update(&db).await.unwrap()
+            });
+
             // Process any remote deletion requests.
             {
                 let mut remote_queue = remote_deletion_queue.get_mut_ref();
@@ -2602,6 +2624,7 @@ pub fn launch(app: &Application, background: bool) {
                 drop(item_ptr);
             }
         }
+        first_sync_of_launch = false;
 
         // Notify that we've finished checking all remotes for changes.
         let error_count = sync_errors_count();
@@ -2610,7 +2633,7 @@ pub fn launch(app: &Application, background: bool) {
             let error_msg = if error_count == 1 {
                 "Finished sync checks with 1 error.".to_string()
             } else {
-                tr::tr!("Finished sync checks with {} errors.", error_count)
+                tr::tr!("Finished sync checks with {} errors.", &error_count)
             };
             handle.update(|tray| tray.set_msg(error_msg));
         } else {
