@@ -3,7 +3,7 @@ use futures::future::Future;
 use std::path::PathBuf;
 
 /// The ID of the app.
-pub static APP_ID: &str = "com.hunterwittenborn.Celeste";
+pub static APP_ID: &str = "com.mtizim.Celeste";
 
 /// Get the value out of a future.
 pub fn await_future<F: Future>(future: F) -> F::Output {
