@@ -2413,6 +2413,28 @@ pub fn launch(app: &Application, background: bool) {
                                 util::await_future(active_model.update(db)).unwrap();
                             };
 
+                            // Google Drive can enter a strange state where timestamps go backwards
+                            // leading to scenarios where:
+                            //
+                            //        db_model.last_local_timestamp
+                            //     == db_model.last_remote_timestamp
+                            //     == l_timestamp
+                            //
+                            // but...
+                            //     remote_timestamp < db_model.last_remote_timestamp
+                            //
+                            // The db is no longer making sense in this scenario,
+                            // so the most reasonable cause of action is to delete its entry.
+                            if remote_timestamp < db_model.last_remote_timestamp as i64
+                            {
+                                add_error(SyncError::General(
+                                    remote_path_string.clone(),
+                                    "New remote timestamp is older than previous".into(),
+                                ));
+                                delete_db_entry();
+                                continue;
+                            }
+
                             // Both items are more recent.
                             if let Some(l_timestamp) = local_timestamp
                                 && l_timestamp > db_model.last_local_timestamp as u64
