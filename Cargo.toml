@@ -10,7 +10,7 @@ blocking = "1.6.1"
 clap = { version = "4.5.7", features = ["derive", "env"] }
 file-lock = "2.1.11"
 futures = "0.3.30"
-glib = "0.16.9"
+glib = "0.20.0"
 glob = "0.3.1"
 hw-msg = "0.3.1"
 indexmap = "1.9.3"
