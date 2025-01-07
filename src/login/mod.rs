@@ -278,8 +278,7 @@ pub fn login(app: &Application, db: &DatabaseConnection) -> Option<RemotesModel>
             ServerType::PCloud(config) => json!({
                 "name": config_name,
                 "parameters": {
-                    "client_id": config.client_id,
-                    "client_secret": config.client_secret,
+                    "hostname": config.hostname,
                     "token": config.auth_json,
                     "config_refresh_token": false
                 },

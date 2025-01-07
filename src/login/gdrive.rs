@@ -269,8 +269,7 @@ impl GDriveConfig {
                             }),
                             AuthType::PCloud => ServerType::PCloud(pcloud::PCloudConfig {
                                 server_name: server_name.text().to_string(),
-                                client_id,
-                                client_secret,
+                                hostname: "eapi.pcloud.com".to_string(),
                                 auth_json: auth_token
                             }),
                         };

@@ -12,8 +12,7 @@ static DEFAULT_CLIENT_SECRET: &str = "g10qvqgWR85lSvEQWlIqCmPYIhwX";
 #[derive(Clone, Debug, Default)]
 pub struct PCloudConfig {
     pub server_name: String,
-    pub client_id: String,
-    pub client_secret: String,
+    pub hostname: String,
     pub auth_json: String,
 }
 
