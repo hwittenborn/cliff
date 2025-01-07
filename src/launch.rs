@@ -533,7 +533,7 @@ pub fn launch(app: &Application, background: bool) {
                 update_error_list();
                 sections.set_visible_child_name(&stack_child_name);
             }));
-            sync_status_sections.add_controller(&gesture);
+            sync_status_sections.add_controller(gesture);
 
             // Add the items to the directory map.
             let sync_status_sections_container = ListBoxRow::builder().child(&sync_status_sections).build();
@@ -1547,7 +1547,7 @@ pub fn launch(app: &Application, background: bool) {
                             }
                         }
                     }));
-                    ui_item.add_controller(&gesture);
+                    ui_item.add_controller(gesture);
 
                     // If we have zero errors now, remove the warning icon.
                     if sync_errors_count() == 0 {

@@ -4,7 +4,7 @@ version = "0.8.3"
 edition = "2021"
 
 [dependencies]
-adw = { package = "libadwaita", version = "0.2.1", features = ["v1_2"] }
+adw = { package = "libadwaita", version = "0.4.4", features = ["v1_4"] }
 base64 = "0.20.0"
 blocking = "1.6.1"
 clap = { version = "4.5.7", features = ["derive", "env"] }

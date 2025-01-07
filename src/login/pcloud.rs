@@ -4,7 +4,7 @@ use crate::{
     login::gdrive::{AuthType, GDriveConfig},
     mpsc::Sender,
 };
-use adw::{gtk::Button, ApplicationWindow, EntryRow};
+use adw::{gtk::{Button, Widget}, ApplicationWindow};
 
 static DEFAULT_CLIENT_ID: &str = "KRzpo46NKb7";
 static DEFAULT_CLIENT_SECRET: &str = "g10qvqgWR85lSvEQWlIqCmPYIhwX";
@@ -14,6 +14,7 @@ pub struct PCloudConfig {
     pub server_name: String,
     pub client_id: String,
     pub client_secret: String,
+    pub hostname: String,
     pub auth_json: String,
 }
 
@@ -21,7 +22,7 @@ impl super::LoginTrait for PCloudConfig {
     fn get_sections(
         window: &ApplicationWindow,
         sender: Sender<Option<ServerType>>,
-    ) -> (Vec<EntryRow>, Button) {
+    ) -> (Vec<Widget>, Button) {
         GDriveConfig::auth_sections(
             window,
             sender,

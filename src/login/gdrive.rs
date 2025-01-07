@@ -7,7 +7,7 @@ use crate::{
     traits::prelude::*,
     util,
 };
-use adw::{glib, gtk::Button, prelude::*, ApplicationWindow, EntryRow, MessageDialog};
+use adw::{glib, gtk::Button, gtk::Widget, prelude::*, ApplicationWindow, MessageDialog, SwitchRow};
 use nix::{
     sys::signal::{self, Signal},
     unistd::Pid,
@@ -96,7 +96,7 @@ impl super::LoginTrait for GDriveConfig {
     fn get_sections(
         window: &ApplicationWindow,
         sender: Sender<Option<ServerType>>,
-    ) -> (Vec<EntryRow>, Button) {
+    ) -> (Vec<Widget>, Button) {
         Self::auth_sections(
             window,
             sender,
@@ -113,15 +113,19 @@ impl GDriveConfig {
         sender: Sender<Option<ServerType>>,
         auth_type: AuthType,
         client_id: String,
-        client_secret: String,
-    ) -> (Vec<EntryRow>, Button) {
-        let mut sections: Vec<EntryRow> = vec![];
+        client_secret: String
+    ) -> (Vec<Widget>, Button) {
+        let mut sections: Vec<Widget> = vec![];
         let server_name = login_util::server_name_input();
+        let in_europe = SwitchRow::builder().title(&tr::tr!("European server")).active(false).build();
+        if matches!(auth_type, AuthType::PCloud) {
+            sections.push(in_europe.clone().into());
+        }
         let submit_button = login_util::submit_button();
 
-        sections.push(server_name.clone());
+        sections.push(server_name.clone().into());
 
-        submit_button.connect_clicked(glib::clone!(@weak window, @weak server_name, @strong client_id, @strong client_secret => move |_| {
+        submit_button.connect_clicked(glib::clone!(@weak window, @weak server_name, @weak in_europe, @strong client_id, @strong client_secret => move |_| {
             window.set_sensitive(false);
 
             // For some reason we get compiler errors without these two lines :P.
@@ -249,10 +253,8 @@ impl GDriveConfig {
                         window.set_sensitive(true);
                         break;
                     } else {
-                        let auth_token = {
-                            let lines: Vec<String> = process_stdout.lock().unwrap().lines().map(|string| string.to_owned()).collect();
-                            lines.get(lines.len() - 2).unwrap().to_owned()
-                        };
+                        let lines: Vec<String> = process_stdout.lock().unwrap().lines().map(|string| string.to_owned()).collect();
+                        let auth_token = lines.get(lines.len() - 2).unwrap().to_owned();
 
                         let server_type = match auth_type {
                             AuthType::GDrive => ServerType::GDrive(GDriveConfig {
@@ -267,12 +269,15 @@ impl GDriveConfig {
                                 client_secret,
                                 auth_json: auth_token
                             }),
-                            AuthType::PCloud => ServerType::PCloud(pcloud::PCloudConfig {
+                            AuthType::PCloud => {
+                                ServerType::PCloud(pcloud::PCloudConfig {
                                 server_name: server_name.text().to_string(),
+                                // hostname: ,
+                                hostname: if in_europe.is_active() {"eapi.pcloud.com".to_string()} else {"api.pcloud.com".to_string()},
                                 client_id,
                                 client_secret,
                                 auth_json: auth_token
-                            }),
+                            })},
                         };
                         sender.send(Some(server_type));
                         window.set_sensitive(true);

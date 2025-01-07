@@ -2,9 +2,9 @@
 use super::{login_util, nextcloud::NextcloudConfig, owncloud::OwncloudConfig, ServerType};
 use crate::mpsc::Sender;
 use adw::{
-    gtk::{glib, Button},
+    gtk::{glib, Button, Widget},
     prelude::*,
-    ApplicationWindow, EntryRow,
+    ApplicationWindow,
 };
 
 pub enum WebDavType {
@@ -25,7 +25,7 @@ impl super::LoginTrait for WebDavConfig {
     fn get_sections(
         _window: &ApplicationWindow,
         sender: Sender<Option<ServerType>>,
-    ) -> (Vec<EntryRow>, Button) {
+    ) -> (Vec<Widget>, Button) {
         Self::webdav_sections(sender, WebDavType::WebDav)
     }
 }
@@ -34,8 +34,8 @@ impl WebDavConfig {
     pub fn webdav_sections(
         sender: Sender<Option<ServerType>>,
         webdav_type: WebDavType,
-    ) -> (Vec<EntryRow>, Button) {
-        let mut sections: Vec<EntryRow> = vec![];
+    ) -> (Vec<Widget>, Button) {
+        let mut sections: Vec<Widget> = vec![];
 
         let server_name = login_util::server_name_input();
         let server_url = login_util::server_url_input(match webdav_type {
@@ -46,9 +46,9 @@ impl WebDavConfig {
         let password = login_util::password_input();
         let submit_button = login_util::submit_button();
 
-        sections.push(server_name.clone());
-        sections.push(server_url.clone());
-        sections.push(username.clone());
+        sections.push(server_name.clone().into());
+        sections.push(server_url.clone().into());
+        sections.push(username.clone().into());
         sections.push(password.clone().into());
 
         submit_button.connect_clicked(

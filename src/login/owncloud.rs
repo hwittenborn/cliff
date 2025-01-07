@@ -4,7 +4,7 @@ use super::{
     ServerType,
 };
 use crate::mpsc::Sender;
-use adw::{gtk::Button, ApplicationWindow, EntryRow};
+use adw::{gtk::{Button, Widget}, ApplicationWindow};
 
 #[derive(Clone, Debug, Default)]
 pub struct OwncloudConfig {
@@ -18,7 +18,7 @@ impl super::LoginTrait for OwncloudConfig {
     fn get_sections(
         _window: &ApplicationWindow,
         sender: Sender<Option<ServerType>>,
-    ) -> (Vec<EntryRow>, Button) {
+    ) -> (Vec<Widget>, Button) {
         WebDavConfig::webdav_sections(sender, WebDavType::Owncloud)
     }
 }
