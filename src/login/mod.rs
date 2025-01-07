@@ -18,9 +18,9 @@ mod webdav;
 
 use adw::{
     glib,
-    gtk::{Box, Button, Inhibit, ListBox, Orientation, SelectionMode, StringList},
+    gtk::{Box, Button, Inhibit, ListBox, Orientation, SelectionMode, StringList, Widget},
     prelude::*,
-    Application, ApplicationWindow, ComboRow, EntryRow, HeaderBar,
+    Application, ApplicationWindow, ComboRow, HeaderBar,
 };
 use dropbox::DropboxConfig;
 use gdrive::GDriveConfig;
@@ -39,7 +39,7 @@ trait LoginTrait {
     fn get_sections(
         window: &ApplicationWindow,
         sender: Sender<Option<ServerType>>,
-    ) -> (Vec<EntryRow>, Button);
+    ) -> (Vec<Widget>, Button);
 }
 
 /// An enum representing valid storage types.
@@ -158,7 +158,7 @@ pub fn login(app: &Application, db: &DatabaseConnection) -> Option<RemotesModel>
     let webdav_items = WebDavConfig::get_sections(&window, sender);
 
     // Store the active items.
-    let active_items: Rc<RefCell<(Vec<EntryRow>, Button)>> =
+    let active_items: Rc<RefCell<(Vec<Widget>, Button)>> =
         Rc::new(RefCell::new((vec![], submit_button)));
 
     // Configure the window to change the widgets when the selected server type
@@ -184,7 +184,7 @@ pub fn login(app: &Application, db: &DatabaseConnection) -> Option<RemotesModel>
         // Now remove the current listbox items.
         for row in ptr.0.clone()  {
             // Reset the row to default styling and text so that when the user goes back it looks like a fresh page.
-            row.set_text("");
+            // row.set_text("");
             row.remove_css_class("error");
 
             // Actually remove the item.
@@ -279,6 +279,8 @@ pub fn login(app: &Application, db: &DatabaseConnection) -> Option<RemotesModel>
                 "name": config_name,
                 "parameters": {
                     "hostname": config.hostname,
+                    "client_id": config.client_id,
+                    "client_secret": config.client_secret,
                     "token": config.auth_json,
                     "config_refresh_token": false
                 },

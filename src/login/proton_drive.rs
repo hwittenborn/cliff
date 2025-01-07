@@ -1,7 +1,7 @@
 //! The data for a Proton Drive Rclone config.
 use super::ServerType;
 use crate::{login::login_util, mpsc::Sender};
-use adw::{glib, gtk::Button, prelude::*, ApplicationWindow, EntryRow};
+use adw::{glib, gtk::{Button, Widget}, prelude::*, ApplicationWindow};
 
 #[derive(Clone, Debug, Default)]
 pub struct ProtonDriveConfig {
@@ -15,7 +15,7 @@ impl super::LoginTrait for ProtonDriveConfig {
     fn get_sections(
         _window: &ApplicationWindow,
         sender: Sender<Option<ServerType>>,
-    ) -> (Vec<EntryRow>, Button) {
+    ) -> (Vec<Widget>, Button) {
         let mut sections = vec![];
         let server_name = login_util::server_name_input();
         let username = login_util::username_input();
@@ -23,10 +23,10 @@ impl super::LoginTrait for ProtonDriveConfig {
         let totp = login_util::totp_input();
         let submit_button = login_util::submit_button();
 
-        sections.push(server_name.clone());
-        sections.push(username.clone());
+        sections.push(server_name.clone().into());
+        sections.push(username.clone().into());
         sections.push(password.clone().into());
-        sections.push(totp.clone());
+        sections.push(totp.clone().into());
 
         submit_button.connect_clicked(
             glib::clone!(@weak server_name, @weak username, @weak password, @weak totp => move |_| {

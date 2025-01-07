@@ -1,7 +1,4 @@
 #![feature(let_chains)]
-#![feature(arc_unwrap_or_clone)]
-#![feature(panic_info_message)]
-#![feature(async_closure)]
 #![feature(trait_alias)]
 #![feature(exit_status_error)]
 
@@ -63,7 +60,7 @@ fn main() {
 
     // Load our CSS.
     let provider = CssProvider::new();
-    provider.load_from_data(include_bytes!(concat!(env!("OUT_DIR"), "/style.css")));
+    provider.load_from_path(concat!(env!("OUT_DIR"), "/style.css"));
 
     StyleContext::add_provider_for_display(
         &Display::default().unwrap(),

@@ -30,6 +30,7 @@ pub fn get_remote<T: ToString>(remote: T) -> Option<Remote> {
         })),
         "pcloud" => Some(Remote::PCloud(PCloudRemote {
             remote_name: remote,
+            hostname: config["hostname"].clone(),
             client_id: config["client_id"].clone(),
             client_secret: config["client_secret"].clone(),
         })),
@@ -125,6 +126,8 @@ pub struct GDriveRemote {
 pub struct PCloudRemote {
     /// The name of the remote.
     pub remote_name: String,
+    /// The API server to connect to (NA or EU)
+    pub hostname: String,
     /// The client id.
     pub client_id: String,
     /// The client secret.
